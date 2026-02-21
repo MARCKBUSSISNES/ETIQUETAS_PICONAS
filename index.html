@@ -240,7 +240,7 @@
   <div class="brand">
     <img src="assets/LOGO2.png" alt="LOGO2" onerror="this.style.display='none'">
     <div class="t">
-      <b>Las Piconas</b>
+      <b>Marck Business</b>
       <span>Sistema desarrollado por MarckBusiness Solutions. Todos los derechos reservados.</span>
     </div>
   </div>
@@ -346,14 +346,15 @@
           </div>
 
           <div class="mini">
-            • PNG: ya no usa LOGO2 (evita tainted canvas).<br>
-            • Siempre abre WhatsApp. Copia texto al portapapeles (más estable).
+            •<br>
+            • Puede enviar su inventario por whatsapp, presionando Control + V
+
           </div>
 
           <div style="height:10px"></div>
           <div class="card" style="border-radius:16px; box-shadow:none">
             <div class="bd">
-              <label>Inventario (texto)</label>
+              <label>Inventario.</label>
               <textarea id="invText" readonly class="mono"></textarea>
             </div>
           </div>
@@ -457,7 +458,7 @@ function setSettings(s){setJson(KEY_SETTINGS,s);}
 /* =========================
    MODALS
 ========================= */
-function showModal({title="Marck Business", bodyHtml="", actions=[]}){
+function showModal({title="Las Piconas", bodyHtml="", actions=[]}){
   const root=$("modalRoot");
   root.innerHTML=`
     <div class="overlay">
@@ -580,7 +581,7 @@ function refreshInvText(){ $("invText").value = buildInvText(); }
 function buildInvText(){
   const keys=Object.keys(inventory).sort((a,b)=>a.localeCompare(b,"es"));
   const lines=[];
-  lines.push("INVENTARIO ACTUAL - MARCK BUSINESS");
+  lines.push("INVENTARIO ACTUAL - Planta Las Piconas");
   lines.push(`Generado: ${new Date().toLocaleString("es-GT")}`);
   lines.push("—");
   keys.forEach(k=>lines.push(`${k}: ${Number(inventory[k]||0)}`));
@@ -665,7 +666,7 @@ function buildPrintDoc({product, qty, lot, prodDateHuman}){
             <div><b>LOTE:</b> ${safeLot}</div>
             <div><b>PROD:</b> ${safeDate}</div>
           </div>
-          <div class="foot">Marck Business</div>
+          <div class="foot">Las Piconas - Planta</div>
         </div>
       </div>
     `;
@@ -913,6 +914,7 @@ boot();
 </script>
 </body>
 </html>
+
 
 
 
