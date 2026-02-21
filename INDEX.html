@@ -1,417 +1,915 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>Parqueo Web (sin Python) - LPR + Guardado + Ticket</title>
-  <style>
-    :root{
-      --bg:#0b0d12; --card:#121829; --ink:#eaf0ff; --muted:rgba(234,240,255,.7);
-      --line:rgba(255,255,255,.12); --accent:#2f6bff; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
-      --radius:16px; --mono: ui-monospace,Consolas,monospace;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:system-ui;
-      background:radial-gradient(1200px 650px at 20% 0%, #1a2040 0%, var(--bg) 55%, #07080b 100%);
-      color:var(--ink);
-    }
-    .app{max-width:1200px;margin:18px auto;padding:0 14px 22px;display:grid;grid-template-columns:460px 1fr;gap:14px}
-    .panel{background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));border:1px solid var(--line);border-radius:var(--radius);padding:14px}
-    h1{margin:0;font-size:16px}
-    .sub{margin:8px 0 12px;color:var(--muted);font-size:12.5px;line-height:1.35}
-    video{width:100%;max-height:420px;background:#000;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
-    label{display:block;margin:10px 0 6px;font-size:12px;color:var(--muted)}
-    input,select{
-      width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.22); color:var(--ink); padding:10px 10px; outline:none; font-size:13.5px
-    }
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .btn{
-      border:0;border-radius:12px;padding:10px 12px;font-weight:850;cursor:pointer;color:#fff;
-      background:linear-gradient(180deg,#3b78ff,#1f56e6)
-    }
-    .btn.secondary{background:linear-gradient(180deg,#151a2a,#0f1423);border:1px solid rgba(255,255,255,.12)}
-    .btn.ghost{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);color:var(--ink)}
-    .log{margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.20);white-space:pre-wrap;font-family:var(--mono);font-size:12px;color:rgba(234,240,255,.86);min-height:100px}
-    table{width:100%;border-collapse:collapse;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.14)}
-    th,td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left;font-size:12.5px;color:rgba(234,240,255,.88)}
-    th{color:var(--muted);font-weight:800}
-    tr:last-child td{border-bottom:0}
-    .tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}
-    .in{background:rgba(34,197,94,.18);color:#baf7cf;border:1px solid rgba(34,197,94,.35)}
-    .out{background:rgba(245,158,11,.18);color:#ffe1a8;border:1px solid rgba(245,158,11,.35)}
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Generador de Etiquetas</title>
 
-    /* PRINT 80mm */
-    #printArea{display:none}
-    @media print{
-      body{background:#fff}
-      .app{display:none!important}
-      #printArea{display:block!important;color:#000}
-    }
-    @page{ size:80mm auto; margin:0; }
-    .ticket{width:80mm;padding:8mm 6mm 8mm;font-family:Arial;color:#000}
-    .t-center{text-align:center}
-    .t-title{font-size:16px;font-weight:900}
-    .t-row{display:flex;justify-content:space-between;gap:10px;font-size:12px}
-    .t-hr{border-top:1px dashed #000;margin:6px 0}
-  </style>
+<style>
+  :root{
+    --bgA:#0b1220; --bgB:#0f1b2e;
+    --glass: rgba(255,255,255,.08);
+    --line: rgba(255,255,255,.12);
+    --text: rgba(255,255,255,.92);
+    --muted: rgba(255,255,255,.62);
+
+    --accentA:#57a6ff; --accentB:#2b73ff;
+    --okA:#3be38a; --okB:#18b563;
+    --dangerA:#ff6a6a; --dangerB:#e13d3d;
+
+    --shadow: 0 18px 55px rgba(0,0,0,.42);
+    --radius: 18px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(900px 520px at 10% 8%, rgba(87,166,255,.20), rgba(0,0,0,0) 60%),
+      radial-gradient(900px 520px at 90% 20%, rgba(59,227,138,.10), rgba(0,0,0,0) 58%),
+      linear-gradient(180deg, var(--bgA), var(--bgB));
+    overflow-x:hidden;
+  }
+
+  .hidden{display:none !important}
+  .muted{color:var(--muted)}
+  .mono{font-family:var(--mono)}
+  .spacer{flex:1}
+
+  .topbar{
+    height:64px; display:flex; align-items:center; gap:12px;
+    padding:12px 16px;
+    position:sticky; top:0; z-index:50;
+    border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+    backdrop-filter: blur(14px);
+  }
+  .hamb{
+    width:46px;height:40px;border-radius:14px;
+    border:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+    box-shadow: 0 12px 22px rgba(0,0,0,.25);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .hamb:active{transform: translateY(1px)}
+  .hamb i{width:18px;height:2px;background:rgba(255,255,255,.9);display:block;position:relative;border-radius:999px;}
+  .hamb i:before,.hamb i:after{content:"";width:18px;height:2px;background:rgba(255,255,255,.9);position:absolute;left:0;border-radius:999px;}
+  .hamb i:before{top:-6px}
+  .hamb i:after{top:6px}
+
+  .brand{display:flex;align-items:center;gap:10px;min-width:260px;}
+  .brand img{height:34px;width:auto;filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));}
+  .brand .t{display:flex;flex-direction:column;line-height:1.1;}
+  .brand .t b{font-size:13px;letter-spacing:.2px}
+  .brand .t span{font-size:12px;color:var(--muted)}
+
+  .pill{
+    padding:8px 12px;border-radius:999px;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,.06);
+    color:var(--muted);font-size:12px;
+  }
+
+  .btn{
+    border:none;border-radius:14px;padding:10px 14px;
+    cursor:pointer;font-weight:900;font-size:13px;
+    color:rgba(255,255,255,.92);
+    border:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+    box-shadow: 0 14px 28px rgba(0,0,0,.28);
+  }
+  .btn:hover{filter:brightness(1.05)}
+  .btn:active{transform: translateY(1px)}
+  .btn.primary{border-color: rgba(87,166,255,.45);background: linear-gradient(180deg, rgba(87,166,255,.85), rgba(43,115,255,.85));}
+  .btn.ok{border-color: rgba(59,227,138,.45);background: linear-gradient(180deg, rgba(59,227,138,.85), rgba(24,181,99,.85));}
+  .btn.danger{border-color: rgba(255,106,106,.50);background: linear-gradient(180deg, rgba(255,106,106,.85), rgba(225,61,61,.85));}
+  .btn.ghost{background: rgba(255,255,255,.05);}
+
+  .wrap{max-width:1240px;margin:16px auto;padding:0 16px 30px;}
+  .grid{display:grid;grid-template-columns: 1.15fr .85fr;gap:14px;}
+  .card{
+    border-radius: var(--radius);
+    border:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+    box-shadow: var(--shadow);
+    overflow:hidden;
+  }
+  .hd{
+    padding:12px 14px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+  }
+  .hd b{font-size:13px}
+  .bd{padding:14px}
+
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .field{min-width:220px;flex:1}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  input,select,textarea{
+    width:100%;padding:10px 10px;border-radius:14px;
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.18);
+    color: rgba(255,255,255,.92);
+    outline:none;font-size:13px;
+  }
+  textarea{min-height:90px;resize:vertical}
+  input:focus,select:focus,textarea:focus{
+    border-color: rgba(87,166,255,.55);
+    box-shadow: 0 0 0 3px rgba(87,166,255,.18);
+  }
+  .mini{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35}
+
+  table{
+    width:100%;border-collapse:collapse;overflow:hidden;
+    border-radius:16px;border:1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.14);
+  }
+  th,td{padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.10);font-size:13px;}
+  th{text-align:left;font-size:12px;color: var(--muted);background: rgba(255,255,255,.06);}
+  tr:last-child td{border-bottom:none}
+  .right{text-align:right}
+
+  .drawerBackdrop{
+    position:fixed; inset:0; background: rgba(0,0,0,.55);
+    backdrop-filter: blur(10px); z-index:60;
+    opacity:0; pointer-events:none; transition: opacity .18s ease;
+  }
+  .drawerBackdrop.show{opacity:1; pointer-events:auto}
+  .drawer{
+    position:fixed; top:0; left:0; height:100%;
+    width:min(420px, 92vw); z-index:61;
+    transform: translateX(-110%); transition: transform .22s ease;
+    background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+    border-right:1px solid rgba(255,255,255,.14);
+    box-shadow: 24px 0 80px rgba(0,0,0,.55);
+  }
+  .drawer.show{transform: translateX(0)}
+  .drawer .dh{
+    height:64px; display:flex; align-items:center; gap:12px;
+    padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.12);
+  }
+  .drawer .dh img{height:34px}
+  .drawer .dh b{font-size:13px}
+  .drawer .section{padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.08);}
+  .navbtn{
+    width:100%; text-align:left; padding:10px 12px; border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.12);
+    color: rgba(255,255,255,.90);
+    cursor:pointer; font-weight:900; margin-bottom:10px;
+  }
+  .navbtn:hover{filter:brightness(1.06)}
+  .navbtn.active{
+    border-color: rgba(87,166,255,.55);
+    box-shadow: 0 0 0 3px rgba(87,166,255,.14);
+  }
+
+  .overlay{
+    position:fixed; inset:0;
+    background: rgba(0,0,0,.60);
+    backdrop-filter: blur(12px);
+    display:flex; align-items:center; justify-content:center;
+    padding:16px; z-index:120;
+  }
+  .modal{
+    width:min(560px, 96vw);
+    border-radius:22px;
+    border:1px solid rgba(255,255,255,.16);
+    background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+    box-shadow: 0 22px 90px rgba(0,0,0,.65);
+    overflow:hidden;
+  }
+  .mh{
+    display:flex; align-items:center; gap:12px;
+    padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06);
+  }
+  .mh img{height:34px}
+  .mh b{font-size:13px}
+  .mb{padding:14px}
+  .mf{
+    padding:12px 14px; border-top:1px solid rgba(255,255,255,.12);
+    display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;
+  }
+
+  /* Print helpers */
+  #printArea{display:none}
+  @media print{
+    body{background:white}
+    .noPrint{display:none !important}
+    #printArea{display:block !important}
+  }
+
+  @media (max-width: 980px){
+    .grid{grid-template-columns:1fr}
+    .brand{min-width:auto}
+  }
+</style>
 </head>
 
 <body>
-<div class="app">
-  <section class="panel">
-    <h1>Parqueo Web (sin Python) — Cámara + IA + Guardar + Ticket</h1>
-    <p class="sub">
-      Reconocimiento por API (cloud). Guardado local en IndexedDB. Impresión con window.print().
-    </p>
 
-    <video id="video" autoplay playsinline></video>
-
-    <div class="row" style="margin-top:10px;">
-      <button class="btn" id="start">Iniciar cámara</button>
-      <button class="btn secondary" id="stop">Detener</button>
-      <button class="btn ghost" id="scanOnce">Analizar 1 vez</button>
-      <button class="btn ghost" id="autoBtn">Auto: OFF</button>
+<!-- Drawer -->
+<div id="drawerBackdrop" class="drawerBackdrop hidden"></div>
+<div id="drawer" class="drawer hidden">
+  <div class="dh">
+    <img src="assets/LOGO2.png" alt="LOGO2" onerror="this.style.display='none'">
+    <div style="display:flex; flex-direction:column; line-height:1.1">
+      <b>Menú</b>
+      <span class="muted" style="font-size:12px">---------</span>
     </div>
+  </div>
 
-    <div class="grid2" style="margin-top:10px;">
-      <div>
-        <label>Auto FPS</label>
-        <select id="fps">
-          <option value="0">Apagado</option>
-          <option value="1">1 fps</option>
-          <option value="2" selected>2 fps</option>
-          <option value="4">4 fps</option>
-        </select>
-      </div>
-      <div>
-        <label>Tipo</label>
-        <select id="type">
-          <option value="CARRO" selected>CARRO</option>
-          <option value="MOTO">MOTO</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="grid2">
-      <div>
-        <label>Nombre parqueo</label>
-        <input id="cfgName" value="PARQUEO MIXCO">
-      </div>
-      <div>
-        <label>Imprimir al guardar</label>
-        <select id="cfgPrint">
-          <option value="YES" selected>Sí</option>
-          <option value="NO">No</option>
-        </select>
-      </div>
-    </div>
-
-    <label>Mensaje ticket</label>
-    <input id="cfgMsg" value="Conserve este ticket. Gracias.">
-
-    <div class="log" id="log">Listo.</div>
-    <canvas id="c" style="display:none"></canvas>
-  </section>
-
-  <section class="panel">
-    <h1>Historial</h1>
-    <p class="sub">Últimos 30 registros.</p>
-
-    <div class="grid2">
-      <div>
-        <label>Buscar placa</label>
-        <input id="qPlate" placeholder="P123ABC">
-      </div>
-      <div>
-        <label>Estado</label>
-        <select id="qStatus">
-          <option value="ALL" selected>Todos</option>
-          <option value="ADENTRO">ADENTRO</option>
-          <option value="AFUERA">AFUERA</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="row" style="margin:10px 0;">
-      <button class="btn secondary" id="refresh">Actualizar</button>
-      <button class="btn secondary" id="clearAll">Borrar todo</button>
-    </div>
-
-    <div style="overflow:auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Fecha</th><th>Placa</th><th>Conf</th><th>Tipo</th><th>Estado</th><th>ID</th>
-          </tr>
-        </thead>
-        <tbody id="tb"></tbody>
-      </table>
-    </div>
-  </section>
-</div>
-
-<div id="printArea">
-  <div class="ticket">
-    <div class="t-center t-title" id="tName">PARQUEO</div>
-    <div class="t-center" id="tSub">Ticket</div>
-    <div class="t-hr"></div>
-    <div class="t-row"><b>Placa</b><span id="tPlate">—</span></div>
-    <div class="t-row"><b>Tipo</b><span id="tType">—</span></div>
-    <div class="t-row"><b>Conf</b><span id="tConf">—</span></div>
-    <div class="t-row"><b>Fecha</b><span id="tDate">—</span></div>
-    <div class="t-row"><b>ID</b><span id="tId">—</span></div>
-    <div class="t-hr"></div>
-    <div class="t-center" id="tMsg">—</div>
+  <div class="section">
+    <button class="navbtn active" data-tab="tab-print">🖨️ Imprimir</button>
+    <button class="navbtn" data-tab="tab-inv">📦 Inventario</button>
+    <button class="navbtn" data-tab="tab-products">🧾 Productos</button>
+    <button class="navbtn" data-tab="tab-wa">💬 Enviar WhatsApp</button>
+    <button class="navbtn" data-tab="tab-settings">⚙️ Etiqueta</button>
   </div>
 </div>
 
+<!-- Topbar -->
+<div class="topbar noPrint">
+  <button class="hamb" id="btnHamb" aria-label="Menú"><i></i></button>
+
+  <div class="brand">
+    <img src="assets/LOGO2.png" alt="LOGO2" onerror="this.style.display='none'">
+    <div class="t">
+      <b>Marck Business</b>
+      <span>Sistema desarrollado por MarckBusiness Solutions. Todos los derechos reservados.</span>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="pill"><span class="muted">Tamaño:</span> <span id="pillSize" class="mono">50mm × 80mm</span></div>
+</div>
+
+<div class="wrap noPrint">
+  <div class="grid">
+
+    <div class="card">
+      <div class="hd">
+        <b id="pageTitle">🖨️ Imprimir etiquetas</b>
+        <span class="pill mono" id="pillLot">Lote: —</span>
+      </div>
+      <div class="bd">
+
+        <!-- PRINT -->
+        <div id="tab-print">
+          <div class="row">
+            <div class="field">
+              <label>Producto</label>
+              <select id="productSelect"></select>
+            </div>
+            <div class="field">
+              <label>Cantidad de etiquetas</label>
+              <input id="qty" type="number" min="1" value="1">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Fecha de producción</label>
+              <input id="prodDate" type="date">
+            </div>
+            <div class="field">
+              <label>Lote (automático)</label>
+              <input id="lotPreview" disabled>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="btn primary" id="btnRefreshLot">Actualizar lote</button>
+            <button class="btn ok" id="btnPrint">Imprimir</button>
+            <button class="btn ghost" id="btnResetLot">Reiniciar lote del día</button>
+          </div>
+
+          <div class="mini">
+            • Impresión por iframe (más estable).<br>
+            • Si no imprime: en el diálogo selecciona tu BY-480BT y desactiva “Ajustar”.
+          </div>
+        </div>
+
+        <!-- INVENTORY -->
+        <div id="tab-inv" class="hidden">
+          <table>
+            <thead>
+              <tr><th>Producto</th><th class="right">Etiquetas</th><th class="right">Acción</th></tr>
+            </thead>
+            <tbody id="invBody"></tbody>
+          </table>
+          <div class="mini">• +1 / -1 ajusta inventario manualmente.</div>
+        </div>
+
+        <!-- PRODUCTS -->
+        <div id="tab-products" class="hidden">
+          <div class="row">
+            <div class="field">
+              <label>Agregar producto</label>
+              <input id="newProduct" placeholder="Ej: TORTILLA / EXTRA">
+            </div>
+            <div class="field" style="min-width:180px; flex:0 0 180px">
+              <label>&nbsp;</label>
+              <button class="btn primary" id="btnAddProduct">Agregar</button>
+            </div>
+          </div>
+
+          <div style="height:10px"></div>
+          <table>
+            <thead><tr><th>Producto</th><th class="right">Acción</th></tr></thead>
+            <tbody id="prodBody"></tbody>
+          </table>
+
+          <div class="mini">• Guardado local (localStorage).</div>
+        </div>
+
+        <!-- WHATSAPP -->
+        <div id="tab-wa" class="hidden">
+          <div class="row">
+            <div class="field">
+              <label>Enviar inventario a</label>
+              <select id="waTo">
+                <option value="50258140621">JUAN LUIS - 58140621</option>
+                <option value="50241258450">OFICINA - 41258450</option>
+                <option value="50258140621">DON OSCAR - 58140621</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:260px; flex:0 0 260px">
+              <label>&nbsp;</label>
+              <button class="btn primary" id="btnSendInv">Copiar texto + Abrir WhatsApp + Descargar PNG</button>
+            </div>
+          </div>
+
+          <div class="mini">
+            • PNG: ya no usa LOGO2 (evita tainted canvas).<br>
+            • Siempre abre WhatsApp. Copia texto al portapapeles (más estable).
+          </div>
+
+          <div style="height:10px"></div>
+          <div class="card" style="border-radius:16px; box-shadow:none">
+            <div class="bd">
+              <label>Inventario (texto)</label>
+              <textarea id="invText" readonly class="mono"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="tab-settings" class="hidden">
+          <div class="row">
+            <div class="field">
+              <label>Ancho etiqueta (mm)</label>
+              <input id="lblW" type="number" min="20" max="80" value="50">
+            </div>
+            <div class="field">
+              <label>Alto etiqueta (mm)</label>
+              <input id="lblH" type="number" min="20" max="120" value="80">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Tamaño fuente producto (px)</label>
+              <input id="fontProd" type="number" min="10" max="28" value="14">
+            </div>
+            <div class="field">
+              <label>Margen interno (mm)</label>
+              <input id="padMm" type="number" min="0" max="10" value="4">
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="btn ok" id="btnSaveSettings">Guardar ajustes</button>
+            <button class="btn ghost" id="btnResetSettings">Restaurar</button>
+          </div>
+
+          <div class="mini">• Base: 50×80mm (5×8cm).</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">
+        <b>Panel</b>
+        <span class="pill mono">MB-LABELS v2</span>
+      </div>
+      <div class="bd">
+        <div class="pill" style="display:block">
+          <div class="muted" style="font-size:12px;margin-bottom:6px">Resumen</div>
+          <div class="mono" id="summary">—</div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="pill" style="display:block">
+          <div class="muted" style="font-size:12px;margin-bottom:6px">WhatsApp</div>
+          Este modo es estable: copia texto + abre chat + descarga PNG.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="printArea"></div>
+<iframe id="printFrame" style="position:fixed; left:-9999px; top:-9999px; width:0; height:0; border:0;"></iframe>
+
+<div id="modalRoot"></div>
+
 <script>
-/** ===================== CONFIG IA =====================
- *  Sin Python: usaremos Plate Recognizer directo desde el navegador.
- *  Esto EXpone el token en el front-end. Para producción segura: proxy (Cloudflare Worker/Vercel).
- */
-const PLATE_API_TOKEN = "sk_live_1a2b3c4d5e6f7g8h9";
-const PLATE_API_URL = "https://api.platerecognizer.com/v1/plate-reader/";
+/* =========================
+   DATA
+========================= */
+const KEY_PRODS="mb_labels_products_v2";
+const KEY_INV="mb_labels_inventory_v2";
+const KEY_LOT="mb_labels_lotCounter_v2_";
+const KEY_SETTINGS="mb_labels_settings_v2";
 
-const MIN_CONF = 0.88;
-const DUPLICATE_MS = 10000;
+const DEFAULT_PRODUCTS=["JAMAICA","CAR/BIRRIA","SOPA/BIRRIA","SALSA VERDE","PAN-B/GR","PAN-B/PEQ"];
+const DEFAULT_SETTINGS={wMm:50,hMm:80,fontProd:14,padMm:4};
 
-const $ = (id)=>document.getElementById(id);
-const video = $("video");
-const canvas = $("c");
-const ctx = canvas.getContext("2d");
+const $=(id)=>document.getElementById(id);
 
-let stream=null, timer=null;
-let lastPlate="", lastPlateTs=0;
-
-function log(msg){ $("log").textContent = msg; }
-function pad(n){ return String(n).padStart(2,"0"); }
-function fmt(ts){
-  const d=new Date(ts);
-  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function toYmd(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}
+function compactDate(ymd){return String(ymd||"").replace(/-/g,"");}
+function formatDateEs(ymd){
+  const p=String(ymd||"").split("-");
+  if(p.length!==3) return ymd;
+  return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString("es-GT",{year:"numeric",month:"2-digit",day:"2-digit"});
 }
-function normalizePlate(p){
-  return (p||"").toUpperCase().replace(/\s+/g,"").replace(/[^A-Z0-9\-]/g,"").trim();
-}
+function getJson(key, fallback){try{const v=JSON.parse(localStorage.getItem(key)||"null");return (v===null||v===undefined)?fallback:v;}catch(_){return fallback;}}
+function setJson(key, val){localStorage.setItem(key, JSON.stringify(val));}
 
-async function startCam(){
-  stream = await navigator.mediaDevices.getUserMedia({
-    video:{ width:{ideal:1280}, height:{ideal:720}, facingMode:"environment" },
-    audio:false
-  });
-  video.srcObject=stream;
-  log("✅ Cámara iniciada.");
-}
-function stopCam(){
-  if(timer){ clearInterval(timer); timer=null; $("autoBtn").textContent="Auto: OFF"; }
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  video.srcObject=null;
-  log("Cámara detenida.");
-}
+function getProducts(){const p=getJson(KEY_PRODS,null);return (Array.isArray(p)&&p.length)?p:[...new Set(DEFAULT_PRODUCTS)];}
+function setProducts(p){setJson(KEY_PRODS,[...new Set(p.map(x=>String(x||"").trim()).filter(Boolean))]);}
+function getInventory(){return getJson(KEY_INV,{});}
+function setInventory(inv){setJson(KEY_INV, inv);}
+function getSettings(){const s=getJson(KEY_SETTINGS,null);return (s&&typeof s==="object")?{...DEFAULT_SETTINGS,...s}:{...DEFAULT_SETTINGS};}
+function setSettings(s){setJson(KEY_SETTINGS,s);}
 
-function captureBlob(){
-  const w=video.videoWidth||1280, h=video.videoHeight||720;
-  canvas.width=w; canvas.height=h;
-  ctx.drawImage(video,0,0,w,h);
-  return new Promise(resolve=> canvas.toBlob(resolve, "image/jpeg", 0.85));
-}
-
-async function lprOnce(){
-  if(!PLATE_API_TOKEN || PLATE_API_TOKEN.includes("PON_AQUI")) {
-    log("❌ Debes poner tu token en PLATE_API_TOKEN.");
-    return null;
-  }
-  if(!stream) { log("❌ Inicia la cámara primero."); return null; }
-
-  const blob = await captureBlob();
-  const form = new FormData();
-  form.append("upload", blob, "frame.jpg");
-
-  try{
-    log("📸 Enviando a IA…");
-    const res = await fetch(PLATE_API_URL, {
-      method:"POST",
-      headers:{ "Authorization": "Token " + PLATE_API_TOKEN },
-      body: form
-    });
-    const j = await res.json();
-    const results = j.results || [];
-    if(!results.length) return { plate:null, conf:null };
-
-    const best = results[0];
-    return { plate: normalizePlate(best.plate), conf: best.score ?? null };
-  }catch(e){
-    log("❌ Error IA: " + (e?.message||e));
-    return null;
-  }
-}
-
-/* IndexedDB simple */
-const DB_NAME="parqueoWebDB", DB_VER=1, STORE="records";
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded=()=>{
-      const db=req.result;
-      if(!db.objectStoreNames.contains(STORE)){
-        const st=db.createObjectStore(STORE,{keyPath:"id"});
-        st.createIndex("plate","plate",{unique:false});
-        st.createIndex("status","status",{unique:false});
-        st.createIndex("ts","ts",{unique:false});
-      }
-    };
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error);
+/* =========================
+   MODALS
+========================= */
+function showModal({title="Marck Business", bodyHtml="", actions=[]}){
+  const root=$("modalRoot");
+  root.innerHTML=`
+    <div class="overlay">
+      <div class="modal">
+        <div class="mh">
+          <img src="assets/LOGO2.png" alt="LOGO2" onerror="this.style.display='none'">
+          <b>${escapeHtml(title)}</b>
+        </div>
+        <div class="mb">${bodyHtml}</div>
+        <div class="mf" id="modalActions"></div>
+      </div>
+    </div>`;
+  const a=root.querySelector("#modalActions");
+  actions.forEach(x=>{
+    const b=document.createElement("button");
+    b.className="btn " + (x.kind||"");
+    b.textContent=x.text||"OK";
+    b.onclick=()=>{x.onClick&&x.onClick(); if(x.close!==false) closeModal();};
+    a.appendChild(b);
   });
 }
-async function idbPut(obj){
-  const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(STORE,"readwrite");
-    tx.objectStore(STORE).put(obj);
-    tx.oncomplete=()=>resolve(true);
-    tx.onerror=()=>reject(tx.error);
+function closeModal(){ $("modalRoot").innerHTML=""; }
+function toast(msg, kind=""){
+  showModal({title:"Marck Business", bodyHtml:`<div class="muted" style="font-size:13px;line-height:1.45">${msg}</div>`, actions:[{text:"OK", kind, onClick:()=>{}}]});
+}
+
+/* =========================
+   DRAWER / TABS
+========================= */
+function openDrawer(){
+  $("drawerBackdrop").classList.remove("hidden");
+  $("drawer").classList.remove("hidden");
+  requestAnimationFrame(()=>{$("drawerBackdrop").classList.add("show"); $("drawer").classList.add("show");});
+}
+function closeDrawer(){
+  $("drawerBackdrop").classList.remove("show"); $("drawer").classList.remove("show");
+  setTimeout(()=>{$("drawerBackdrop").classList.add("hidden"); $("drawer").classList.add("hidden");}, 220);
+}
+function setTab(tabId){
+  const tabs=["tab-print","tab-inv","tab-products","tab-wa","tab-settings"];
+  tabs.forEach(id=>$(id).classList.toggle("hidden", id!==tabId));
+  const titleMap={"tab-print":"🖨️ Imprimir etiquetas","tab-inv":"📦 Inventario","tab-products":"🧾 Productos","tab-wa":"💬 Enviar WhatsApp","tab-settings":"⚙️ Configuración etiqueta"};
+  $("pageTitle").textContent=titleMap[tabId]||"Marck Business";
+  document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active", b.getAttribute("data-tab")===tabId));
+  closeDrawer();
+}
+
+/* =========================
+   LOT
+========================= */
+function peekNextLot(dateYmd){
+  const cpt=compactDate(dateYmd);
+  const k=KEY_LOT+cpt;
+  const c=Number(localStorage.getItem(k)||"0");
+  return `L-${cpt}-${String(c+1).padStart(3,"0")}`;
+}
+function nextLot(dateYmd){
+  const cpt=compactDate(dateYmd);
+  const k=KEY_LOT+cpt;
+  let c=Number(localStorage.getItem(k)||"0"); c+=1;
+  localStorage.setItem(k,String(c));
+  return `L-${cpt}-${String(c).padStart(3,"0")}`;
+}
+function resetLot(dateYmd){
+  const cpt=compactDate(dateYmd);
+  localStorage.setItem(KEY_LOT+cpt,"0");
+}
+
+/* =========================
+   STATE
+========================= */
+let products=[], inventory={}, settings={...DEFAULT_SETTINGS};
+
+function refreshProductSelect(){
+  const sel=$("productSelect");
+  sel.innerHTML="";
+  products.forEach(p=>{
+    const opt=document.createElement("option");
+    opt.value=p; opt.textContent=p;
+    sel.appendChild(opt);
+    if(!(p in inventory)) inventory[p]=0;
   });
+  setInventory(inventory);
 }
-async function idbAll(){
-  const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(STORE,"readonly");
-    const req=tx.objectStore(STORE).getAll();
-    req.onsuccess=()=>resolve(req.result||[]);
-    req.onerror=()=>reject(req.error);
-  });
+function refreshLotPreview(){
+  const d=$("prodDate").value || toYmd(new Date());
+  const lot=peekNextLot(d);
+  $("lotPreview").value=lot;
+  $("pillLot").textContent="Lote: " + lot;
 }
-async function idbClear(){
-  const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(STORE,"readwrite");
-    tx.objectStore(STORE).clear();
-    tx.oncomplete=()=>resolve(true);
-    tx.onerror=()=>reject(tx.error);
-  });
-}
-async function findActive(plate){
-  const all = await idbAll();
-  return all.filter(r=>r.plate===plate && r.status==="ADENTRO").sort((a,b)=>b.ts-a.ts)[0] || null;
-}
-
-function shouldPrint(){ return $("cfgPrint").value==="YES"; }
-
-function printTicket(rec){
-  $("tName").textContent = ($("cfgName").value||"PARQUEO").trim();
-  $("tSub").textContent  = rec.status==="ADENTRO" ? "Ticket de ingreso" : "Ticket de salida";
-  $("tPlate").textContent= rec.plate;
-  $("tType").textContent = rec.type;
-  $("tConf").textContent = rec.conf!=null ? Math.round(rec.conf*100)+"%" : "—";
-  $("tDate").textContent = fmt(rec.ts);
-  $("tId").textContent   = rec.id;
-  $("tMsg").textContent  = ($("cfgMsg").value||"").trim();
-  window.print();
-}
-
-async function saveEntryAuto(plate, conf){
-  const active = await findActive(plate);
-  if(active){
-    log(`↩️ ${plate} ya está ADENTRO desde ${fmt(active.ts)}.`);
-    return;
-  }
-
-  const rec = {
-    id: "R-" + Date.now() + "-" + Math.random().toString(16).slice(2,8),
-    ts: Date.now(),
-    plate,
-    conf,
-    type: $("type").value,
-    status: "ADENTRO"
-  };
-  await idbPut(rec);
-
-  log(`✅ GUARDADO\nPlaca: ${plate}\nConf: ${Math.round(conf*100)}%\nFecha: ${fmt(rec.ts)}\nID: ${rec.id}`);
-  await refresh();
-
-  if(shouldPrint()) printTicket(rec);
-}
-
-async function scanAndSave(){
-  const data = await lprOnce();
-  if(!data) return;
-
-  if(!data.plate){
-    log("🔍 Sin placa detectada.");
-    return;
-  }
-
-  const now = Date.now();
-  if(data.plate===lastPlate && (now-lastPlateTs) < DUPLICATE_MS){
-    log(`↩️ ${data.plate} ignorada (duplicada).`);
-    return;
-  }
-  if(data.conf != null && data.conf < MIN_CONF){
-    log(`⚠️ ${data.plate} conf baja ${Math.round(data.conf*100)}%`);
-    return;
-  }
-
-  lastPlate = data.plate;
-  lastPlateTs = now;
-  await saveEntryAuto(data.plate, data.conf ?? 0);
-}
-
-function toggleAuto(){
-  if(timer){
-    clearInterval(timer); timer=null;
-    $("autoBtn").textContent="Auto: OFF";
-    log("Auto detenido.");
-    return;
-  }
-  const fps = Number($("fps").value||0);
-  if(!fps) return alert("Selecciona FPS.");
-  if(!stream) return alert("Inicia cámara primero.");
-  timer = setInterval(scanAndSave, Math.round(1000/fps));
-  $("autoBtn").textContent="Auto: ON";
-  log(`Auto iniciado a ${fps} fps.`);
-}
-
-async function refresh(){
-  const qPlate = normalizePlate($("qPlate").value);
-  const qStatus = $("qStatus").value;
-
-  let all = await idbAll();
-  all.sort((a,b)=>b.ts-a.ts);
-
-  if(qPlate) all = all.filter(r=>r.plate.includes(qPlate));
-  if(qStatus!=="ALL") all = all.filter(r=>r.status===qStatus);
-
-  const tb=$("tb");
-  tb.innerHTML="";
-  for(const r of all.slice(0,30)){
+function refreshInventoryTable(){
+  const body=$("invBody");
+  const keys=Object.keys(inventory).sort((a,b)=>a.localeCompare(b,"es"));
+  body.innerHTML = keys.length ? "" : `<tr><td colspan="3" class="muted">Sin datos aún.</td></tr>`;
+  keys.forEach(p=>{
     const tr=document.createElement("tr");
-    tr.innerHTML = `
-      <td>${fmt(r.ts)}</td>
-      <td>${r.plate}</td>
-      <td>${r.conf!=null?Math.round(r.conf*100)+"%":"—"}</td>
-      <td>${r.type}</td>
-      <td><span class="tag ${r.status==="ADENTRO"?"in":"out"}">${r.status}</span></td>
-      <td>${r.id}</td>
-    `;
-    tb.appendChild(tr);
+    tr.innerHTML=`
+      <td>${escapeHtml(p)}</td>
+      <td class="right"><b>${Number(inventory[p]||0)}</b></td>
+      <td class="right">
+        <button class="btn danger" style="padding:7px 10px;font-size:12px" data-act="minus" data-prod="${escapeHtml(p)}">-1</button>
+        <button class="btn ghost" style="padding:7px 10px;font-size:12px" data-act="plus" data-prod="${escapeHtml(p)}">+1</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+}
+function refreshProductsTable(){
+  const body=$("prodBody");
+  const list=[...products].sort((a,b)=>a.localeCompare(b,"es"));
+  body.innerHTML = list.length ? "" : `<tr><td class="muted">Sin productos.</td><td class="right">—</td></tr>`;
+  list.forEach(p=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${escapeHtml(p)}</td>
+      <td class="right"><button class="btn danger" style="padding:7px 10px;font-size:12px" data-act="delprod" data-prod="${escapeHtml(p)}">Eliminar</button></td>`;
+    body.appendChild(tr);
+  });
+}
+function refreshInvText(){ $("invText").value = buildInvText(); }
+function buildInvText(){
+  const keys=Object.keys(inventory).sort((a,b)=>a.localeCompare(b,"es"));
+  const lines=[];
+  lines.push("INVENTARIO ACTUAL - MARCK BUSINESS");
+  lines.push(`Generado: ${new Date().toLocaleString("es-GT")}`);
+  lines.push("—");
+  keys.forEach(k=>lines.push(`${k}: ${Number(inventory[k]||0)}`));
+  return lines.join("\n");
+}
+function refreshSummary(){
+  const total=Object.values(inventory).reduce((a,b)=>a+Number(b||0),0);
+  $("summary").textContent = `Productos: ${products.length} | Etiquetas impresas (total): ${total}`;
+}
+function applySettingsToUI(){
+  $("lblW").value=settings.wMm;
+  $("lblH").value=settings.hMm;
+  $("fontProd").value=settings.fontProd;
+  $("padMm").value=settings.padMm;
+  $("pillSize").textContent=`${settings.wMm}mm × ${settings.hMm}mm`;
+}
+
+/* =========================
+   ACTIONS
+========================= */
+function addProduct(){
+  const raw=($("newProduct").value||"").trim();
+  if(!raw){ toast("Escribe un nombre de producto.", "primary"); return; }
+  const name=raw.toUpperCase();
+  if(products.includes(name)){ toast("Ese producto ya existe.", "primary"); return; }
+  products.push(name);
+  inventory[name]=inventory[name]||0;
+  setProducts(products); setInventory(inventory);
+  $("newProduct").value="";
+  refreshProductSelect(); refreshInventoryTable(); refreshProductsTable(); refreshInvText(); refreshSummary();
+  toast(`Producto agregado: <b>${escapeHtml(name)}</b>`, "ok");
+}
+function decodeHtml(s){const t=document.createElement("textarea"); t.innerHTML=s; return t.value;}
+function onInvClick(e){
+  const btn=e.target.closest("button[data-act]"); if(!btn) return;
+  const act=btn.getAttribute("data-act");
+  const prod=decodeHtml(btn.getAttribute("data-prod")||"");
+  if(!(prod in inventory)) inventory[prod]=0;
+  if(act==="plus") inventory[prod]=Number(inventory[prod]||0)+1;
+  if(act==="minus") inventory[prod]=Math.max(0, Number(inventory[prod]||0)-1);
+  setInventory(inventory);
+  refreshInventoryTable(); refreshInvText(); refreshSummary();
+}
+function onProdClick(e){
+  const btn=e.target.closest("button[data-act]"); if(!btn) return;
+  if(btn.getAttribute("data-act")==="delprod"){
+    const prod=decodeHtml(btn.getAttribute("data-prod")||"");
+    showModal({
+      title:"Eliminar producto",
+      bodyHtml:`<div class="mini" style="margin-top:0">¿Eliminar <b>${escapeHtml(prod)}</b>?</div>`,
+      actions:[
+        {text:"Cancelar", kind:"ghost", onClick:()=>{}},
+        {text:"Eliminar", kind:"danger", onClick:()=>{
+          products=products.filter(p=>p!==prod);
+          delete inventory[prod];
+          setProducts(products); setInventory(inventory);
+          refreshProductSelect(); refreshInventoryTable(); refreshProductsTable(); refreshInvText(); refreshSummary();
+          toast("Producto eliminado.", "ok");
+        }}
+      ]
+    });
   }
 }
 
-$("start").onclick = startCam;
-$("stop").onclick = stopCam;
-$("scanOnce").onclick = scanAndSave;
-$("autoBtn").onclick = toggleAuto;
-$("refresh").onclick = refresh;
-$("clearAll").onclick = async ()=>{ if(confirm("¿Borrar todo?")){ await idbClear(); await refresh(); log("Borrado."); } };
+/* =========================
+   PRINT (IFRAME)
+========================= */
+function buildPrintDoc({product, qty, lot, prodDateHuman}){
+  const s=settings;
+  const safeProduct=escapeHtml(product);
+  const safeLot=escapeHtml(lot);
+  const safeDate=escapeHtml(prodDateHuman);
 
-$("qPlate").addEventListener("input", refresh);
-$("qStatus").addEventListener("change", refresh);
+  let pages="";
+  for(let i=0;i<qty;i++){
+    pages += `
+      <div class="page">
+        <div class="label">
+          <div class="logoWrap"><img class="logo" src="assets/LOGO1.png" alt="LOGO1"></div>
+          <div class="prod">${safeProduct}</div>
+          <div class="meta">
+            <div><b>LOTE:</b> ${safeLot}</div>
+            <div><b>PROD:</b> ${safeDate}</div>
+          </div>
+          <div class="foot">Marck Business</div>
+        </div>
+      </div>
+    `;
+  }
 
-refresh();
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  @page{ size:${s.wMm}mm ${s.hMm}mm; margin:0; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:"Segoe UI", Arial, sans-serif; }
+  .page{ width:${s.wMm}mm; height:${s.hMm}mm; page-break-after:always; }
+  .label{
+    width:${s.wMm}mm; height:${s.hMm}mm;
+    padding:${s.padMm}mm;
+    box-sizing:border-box;
+    display:flex; flex-direction:column;
+    justify-content:space-between;
+    color:#000;
+  }
+  .logoWrap{display:flex;justify-content:center;align-items:center;margin-top:1mm;}
+  .logo{max-width:${Math.max(10, s.wMm-8)}mm; max-height:18mm; object-fit:contain;}
+  .prod{font-size:${s.fontProd}px;font-weight:900;text-align:center;letter-spacing:.2px;margin-top:2mm;word-break:break-word;}
+  .meta{font-size:11px;line-height:1.25;margin-top:2mm;}
+  .foot{font-size:10px;text-align:center;margin-bottom:1mm;}
+</style>
+</head>
+<body>
+${pages}
+<script>
+  // Espera un poco para cargar el logo y luego imprime
+  setTimeout(()=>{ window.focus(); window.print(); }, 400);
+<\/script>
+</body></html>`;
+}
+
+function printLabels(){
+  const product=$("productSelect").value;
+  const qty=Math.max(1, Number($("qty").value||1));
+  const prodDate=$("prodDate").value || toYmd(new Date());
+  if(!product){ toast("Selecciona un producto.", "primary"); return; }
+
+  const lot=nextLot(prodDate);
+  const prodDateHuman=formatDateEs(prodDate);
+
+  // Update inventory first
+  inventory[product]=Number(inventory[product]||0)+qty;
+  setInventory(inventory);
+  refreshInventoryTable(); refreshInvText(); refreshSummary();
+
+  // Print via iframe
+  const frame=$("printFrame");
+  frame.srcdoc = buildPrintDoc({product, qty, lot, prodDateHuman});
+
+  refreshLotPreview();
+  toast(`Impresión enviada.<br><span class="muted">Producto:</span> <b>${escapeHtml(product)}</b> · <span class="muted">Cantidad:</span> <b>${qty}</b> · <span class="muted">Lote:</span> <b>${escapeHtml(lot)}</b>`, "ok");
+}
+
+/* =========================
+   PNG (NO IMAGES -> NO TAINT)
+========================= */
+function downloadBlob(blob, filename){
+  const a=document.createElement("a");
+  const url=URL.createObjectURL(blob);
+  a.href=url; a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+function roundRect(ctx, x,y,w,h,r){
+  const rr=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+
+function buildInventoryPng_NoImages(){
+  const keys=Object.keys(inventory).sort((a,b)=>a.localeCompare(b,"es"));
+  const w=900, rowH=38, headerH=120;
+  const h=Math.max(420, headerH + 90 + keys.length*rowH);
+
+  const c=document.createElement("canvas");
+  c.width=w; c.height=h;
+  const ctx=c.getContext("2d");
+
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,"#0f1b2e");
+  g.addColorStop(1,"#0b1220");
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+
+  ctx.fillStyle="rgba(255,255,255,.08)";
+  roundRect(ctx,24,20,w-48,headerH-30,18); ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,.14)";
+  ctx.lineWidth=2; roundRect(ctx,24,20,w-48,headerH-30,18); ctx.stroke();
+
+  const tableY=headerH+10;
+  ctx.fillStyle="rgba(255,255,255,.08)";
+  roundRect(ctx,24,tableY,w-48,h-tableY-24,18); ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,.14)";
+  roundRect(ctx,24,tableY,w-48,h-tableY-24,18); ctx.stroke();
+
+  ctx.fillStyle="rgba(255,255,255,.92)";
+  ctx.font="900 26px Segoe UI, Arial";
+  ctx.fillText("Inventario - Marck Business", 60, 62);
+
+  ctx.fillStyle="rgba(255,255,255,.70)";
+  ctx.font="14px Segoe UI, Arial";
+  ctx.fillText(`Generado: ${new Date().toLocaleString("es-GT")}`, 60, 90);
+
+  ctx.fillStyle="rgba(255,255,255,.70)";
+  ctx.font="900 14px Segoe UI, Arial";
+  ctx.fillText("PRODUCTO", 60, tableY+40);
+  ctx.fillText("ETIQUETAS", w-220, tableY+40);
+
+  ctx.strokeStyle="rgba(255,255,255,.10)";
+  ctx.beginPath(); ctx.moveTo(50, tableY+55); ctx.lineTo(w-50, tableY+55); ctx.stroke();
+
+  ctx.font="14px Segoe UI, Arial";
+  let y=tableY+85;
+  keys.forEach((p,i)=>{
+    if(i%2===0){
+      ctx.fillStyle="rgba(87,166,255,.08)";
+      ctx.fillRect(44, y-24, w-88, rowH);
+    }
+    ctx.fillStyle="rgba(255,255,255,.92)";
+    ctx.fillText(p, 60, y);
+
+    const val=String(Number(inventory[p]||0));
+    ctx.font="900 14px Segoe UI, Arial";
+    ctx.fillText(val, w-140, y);
+    ctx.font="14px Segoe UI, Arial";
+    y+=rowH;
+  });
+
+  return new Promise((resolve,reject)=>{
+    try{
+      c.toBlob(b=> b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
+    }catch(err){ reject(err); }
+  });
+}
+
+async function sendInventory(){
+  const phone=$("waTo").value;
+
+  // Copia TEXTO (estable)
+  const text = buildInvText();
+  let textCopied=false;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+      textCopied=true;
+    }
+  }catch(_){ textCopied=false; }
+
+  // Genera PNG (sin imágenes => nunca taint)
+  let blob=null;
+  try{
+    blob = await buildInventoryPng_NoImages();
+  }catch(e){
+    blob = null;
+  }
+
+  // Abre WhatsApp SIEMPRE
+  window.open(`https://wa.me/${encodeURIComponent(phone)}`, "_blank", "noopener,noreferrer");
+
+  // Descarga PNG si pudo generarlo
+  if(blob){
+    downloadBlob(blob, "inventario_marckbusiness.png");
+  }
+
+  if(textCopied){
+    toast("Listo: Inventario (texto) copiado al portapapeles. Abrí WhatsApp. También se descargó el PNG.", "ok");
+  }else{
+    toast("Abrí WhatsApp. Tu navegador no permitió copiar texto automáticamente. Igual se descargó el PNG.", "primary");
+  }
+}
+
+/* =========================
+   SETTINGS
+========================= */
+function saveSettings(){
+  const wMm=Math.max(20, Math.min(80, Number($("lblW").value||50)));
+  const hMm=Math.max(20, Math.min(120, Number($("lblH").value||80)));
+  const fontProd=Math.max(10, Math.min(28, Number($("fontProd").value||14)));
+  const padMm=Math.max(0, Math.min(10, Number($("padMm").value||4)));
+  settings={wMm,hMm,fontProd,padMm};
+  setSettings(settings);
+  applySettingsToUI();
+  toast("Ajustes guardados.", "ok");
+}
+function resetSettings(){
+  settings={...DEFAULT_SETTINGS};
+  setSettings(settings);
+  applySettingsToUI();
+  toast("Ajustes restaurados.", "primary");
+}
+
+/* =========================
+   BOOT
+========================= */
+function boot(){
+  $("btnHamb").addEventListener("click", openDrawer);
+  $("drawerBackdrop").addEventListener("click", closeDrawer);
+  document.querySelectorAll(".navbtn").forEach(b=>b.addEventListener("click", ()=>setTab(b.getAttribute("data-tab"))));
+
+  $("btnAddProduct").addEventListener("click", addProduct);
+  $("invBody").addEventListener("click", onInvClick);
+  $("prodBody").addEventListener("click", onProdClick);
+
+  $("btnRefreshLot").addEventListener("click", refreshLotPreview);
+  $("btnResetLot").addEventListener("click", ()=>{
+    resetLot($("prodDate").value || toYmd(new Date()));
+    refreshLotPreview();
+    toast("Lote del día reiniciado.", "primary");
+  });
+
+  $("btnPrint").addEventListener("click", printLabels);
+  $("btnSendInv").addEventListener("click", sendInventory);
+
+  $("btnSaveSettings").addEventListener("click", saveSettings);
+  $("btnResetSettings").addEventListener("click", resetSettings);
+
+  products=getProducts();
+  inventory=getInventory();
+  settings=getSettings();
+
+  $("prodDate").value=toYmd(new Date());
+
+  applySettingsToUI();
+  refreshProductSelect();
+  refreshInventoryTable();
+  refreshProductsTable();
+  refreshInvText();
+  refreshLotPreview();
+  refreshSummary();
+}
+
+boot();
 </script>
 </body>
 </html>
