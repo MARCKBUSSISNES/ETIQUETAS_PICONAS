@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Parqueo Web (sin Python) - LPR + Guardado + Ticket</title>
+  <style>
+    :root{
+      --bg:#0b0d12; --card:#121829; --ink:#eaf0ff; --muted:rgba(234,240,255,.7);
+      --line:rgba(255,255,255,.12); --accent:#2f6bff; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+      --radius:16px; --mono: ui-monospace,Consolas,monospace;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui;
+      background:radial-gradient(1200px 650px at 20% 0%, #1a2040 0%, var(--bg) 55%, #07080b 100%);
+      color:var(--ink);
+    }
+    .app{max-width:1200px;margin:18px auto;padding:0 14px 22px;display:grid;grid-template-columns:460px 1fr;gap:14px}
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+    h1{margin:0;font-size:16px}
+    .sub{margin:8px 0 12px;color:var(--muted);font-size:12.5px;line-height:1.35}
+    video{width:100%;max-height:420px;background:#000;border-radius:14px;border:1px solid rgba(255,255,255,.10)}
+    label{display:block;margin:10px 0 6px;font-size:12px;color:var(--muted)}
+    input,select{
+      width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22); color:var(--ink); padding:10px 10px; outline:none; font-size:13.5px
+    }
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .btn{
+      border:0;border-radius:12px;padding:10px 12px;font-weight:850;cursor:pointer;color:#fff;
+      background:linear-gradient(180deg,#3b78ff,#1f56e6)
+    }
+    .btn.secondary{background:linear-gradient(180deg,#151a2a,#0f1423);border:1px solid rgba(255,255,255,.12)}
+    .btn.ghost{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);color:var(--ink)}
+    .log{margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.20);white-space:pre-wrap;font-family:var(--mono);font-size:12px;color:rgba(234,240,255,.86);min-height:100px}
+    table{width:100%;border-collapse:collapse;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.14)}
+    th,td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left;font-size:12.5px;color:rgba(234,240,255,.88)}
+    th{color:var(--muted);font-weight:800}
+    tr:last-child td{border-bottom:0}
+    .tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}
+    .in{background:rgba(34,197,94,.18);color:#baf7cf;border:1px solid rgba(34,197,94,.35)}
+    .out{background:rgba(245,158,11,.18);color:#ffe1a8;border:1px solid rgba(245,158,11,.35)}
+
+    /* PRINT 80mm */
+    #printArea{display:none}
+    @media print{
+      body{background:#fff}
+      .app{display:none!important}
+      #printArea{display:block!important;color:#000}
+    }
+    @page{ size:80mm auto; margin:0; }
+    .ticket{width:80mm;padding:8mm 6mm 8mm;font-family:Arial;color:#000}
+    .t-center{text-align:center}
+    .t-title{font-size:16px;font-weight:900}
+    .t-row{display:flex;justify-content:space-between;gap:10px;font-size:12px}
+    .t-hr{border-top:1px dashed #000;margin:6px 0}
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <section class="panel">
+    <h1>Parqueo Web (sin Python) — Cámara + IA + Guardar + Ticket</h1>
+    <p class="sub">
+      Reconocimiento por API (cloud). Guardado local en IndexedDB. Impresión con window.print().
+    </p>
+
+    <video id="video" autoplay playsinline></video>
+
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="start">Iniciar cámara</button>
+      <button class="btn secondary" id="stop">Detener</button>
+      <button class="btn ghost" id="scanOnce">Analizar 1 vez</button>
+      <button class="btn ghost" id="autoBtn">Auto: OFF</button>
+    </div>
+
+    <div class="grid2" style="margin-top:10px;">
+      <div>
+        <label>Auto FPS</label>
+        <select id="fps">
+          <option value="0">Apagado</option>
+          <option value="1">1 fps</option>
+          <option value="2" selected>2 fps</option>
+          <option value="4">4 fps</option>
+        </select>
+      </div>
+      <div>
+        <label>Tipo</label>
+        <select id="type">
+          <option value="CARRO" selected>CARRO</option>
+          <option value="MOTO">MOTO</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <label>Nombre parqueo</label>
+        <input id="cfgName" value="PARQUEO MIXCO">
+      </div>
+      <div>
+        <label>Imprimir al guardar</label>
+        <select id="cfgPrint">
+          <option value="YES" selected>Sí</option>
+          <option value="NO">No</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Mensaje ticket</label>
+    <input id="cfgMsg" value="Conserve este ticket. Gracias.">
+
+    <div class="log" id="log">Listo.</div>
+    <canvas id="c" style="display:none"></canvas>
+  </section>
+
+  <section class="panel">
+    <h1>Historial</h1>
+    <p class="sub">Últimos 30 registros.</p>
+
+    <div class="grid2">
+      <div>
+        <label>Buscar placa</label>
+        <input id="qPlate" placeholder="P123ABC">
+      </div>
+      <div>
+        <label>Estado</label>
+        <select id="qStatus">
+          <option value="ALL" selected>Todos</option>
+          <option value="ADENTRO">ADENTRO</option>
+          <option value="AFUERA">AFUERA</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" style="margin:10px 0;">
+      <button class="btn secondary" id="refresh">Actualizar</button>
+      <button class="btn secondary" id="clearAll">Borrar todo</button>
+    </div>
+
+    <div style="overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Placa</th><th>Conf</th><th>Tipo</th><th>Estado</th><th>ID</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div id="printArea">
+  <div class="ticket">
+    <div class="t-center t-title" id="tName">PARQUEO</div>
+    <div class="t-center" id="tSub">Ticket</div>
+    <div class="t-hr"></div>
+    <div class="t-row"><b>Placa</b><span id="tPlate">—</span></div>
+    <div class="t-row"><b>Tipo</b><span id="tType">—</span></div>
+    <div class="t-row"><b>Conf</b><span id="tConf">—</span></div>
+    <div class="t-row"><b>Fecha</b><span id="tDate">—</span></div>
+    <div class="t-row"><b>ID</b><span id="tId">—</span></div>
+    <div class="t-hr"></div>
+    <div class="t-center" id="tMsg">—</div>
+  </div>
+</div>
+
+<script>
+/** ===================== CONFIG IA =====================
+ *  Sin Python: usaremos Plate Recognizer directo desde el navegador.
+ *  Esto EXpone el token en el front-end. Para producción segura: proxy (Cloudflare Worker/Vercel).
+ */
+const PLATE_API_TOKEN = "sk_live_1a2b3c4d5e6f7g8h9";
+const PLATE_API_URL = "https://api.platerecognizer.com/v1/plate-reader/";
+
+const MIN_CONF = 0.88;
+const DUPLICATE_MS = 10000;
+
+const $ = (id)=>document.getElementById(id);
+const video = $("video");
+const canvas = $("c");
+const ctx = canvas.getContext("2d");
+
+let stream=null, timer=null;
+let lastPlate="", lastPlateTs=0;
+
+function log(msg){ $("log").textContent = msg; }
+function pad(n){ return String(n).padStart(2,"0"); }
+function fmt(ts){
+  const d=new Date(ts);
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function normalizePlate(p){
+  return (p||"").toUpperCase().replace(/\s+/g,"").replace(/[^A-Z0-9\-]/g,"").trim();
+}
+
+async function startCam(){
+  stream = await navigator.mediaDevices.getUserMedia({
+    video:{ width:{ideal:1280}, height:{ideal:720}, facingMode:"environment" },
+    audio:false
+  });
+  video.srcObject=stream;
+  log("✅ Cámara iniciada.");
+}
+function stopCam(){
+  if(timer){ clearInterval(timer); timer=null; $("autoBtn").textContent="Auto: OFF"; }
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  video.srcObject=null;
+  log("Cámara detenida.");
+}
+
+function captureBlob(){
+  const w=video.videoWidth||1280, h=video.videoHeight||720;
+  canvas.width=w; canvas.height=h;
+  ctx.drawImage(video,0,0,w,h);
+  return new Promise(resolve=> canvas.toBlob(resolve, "image/jpeg", 0.85));
+}
+
+async function lprOnce(){
+  if(!PLATE_API_TOKEN || PLATE_API_TOKEN.includes("PON_AQUI")) {
+    log("❌ Debes poner tu token en PLATE_API_TOKEN.");
+    return null;
+  }
+  if(!stream) { log("❌ Inicia la cámara primero."); return null; }
+
+  const blob = await captureBlob();
+  const form = new FormData();
+  form.append("upload", blob, "frame.jpg");
+
+  try{
+    log("📸 Enviando a IA…");
+    const res = await fetch(PLATE_API_URL, {
+      method:"POST",
+      headers:{ "Authorization": "Token " + PLATE_API_TOKEN },
+      body: form
+    });
+    const j = await res.json();
+    const results = j.results || [];
+    if(!results.length) return { plate:null, conf:null };
+
+    const best = results[0];
+    return { plate: normalizePlate(best.plate), conf: best.score ?? null };
+  }catch(e){
+    log("❌ Error IA: " + (e?.message||e));
+    return null;
+  }
+}
+
+/* IndexedDB simple */
+const DB_NAME="parqueoWebDB", DB_VER=1, STORE="records";
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        const st=db.createObjectStore(STORE,{keyPath:"id"});
+        st.createIndex("plate","plate",{unique:false});
+        st.createIndex("status","status",{unique:false});
+        st.createIndex("ts","ts",{unique:false});
+      }
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function idbPut(obj){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readwrite");
+    tx.objectStore(STORE).put(obj);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+async function idbAll(){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readonly");
+    const req=tx.objectStore(STORE).getAll();
+    req.onsuccess=()=>resolve(req.result||[]);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function idbClear(){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readwrite");
+    tx.objectStore(STORE).clear();
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+async function findActive(plate){
+  const all = await idbAll();
+  return all.filter(r=>r.plate===plate && r.status==="ADENTRO").sort((a,b)=>b.ts-a.ts)[0] || null;
+}
+
+function shouldPrint(){ return $("cfgPrint").value==="YES"; }
+
+function printTicket(rec){
+  $("tName").textContent = ($("cfgName").value||"PARQUEO").trim();
+  $("tSub").textContent  = rec.status==="ADENTRO" ? "Ticket de ingreso" : "Ticket de salida";
+  $("tPlate").textContent= rec.plate;
+  $("tType").textContent = rec.type;
+  $("tConf").textContent = rec.conf!=null ? Math.round(rec.conf*100)+"%" : "—";
+  $("tDate").textContent = fmt(rec.ts);
+  $("tId").textContent   = rec.id;
+  $("tMsg").textContent  = ($("cfgMsg").value||"").trim();
+  window.print();
+}
+
+async function saveEntryAuto(plate, conf){
+  const active = await findActive(plate);
+  if(active){
+    log(`↩️ ${plate} ya está ADENTRO desde ${fmt(active.ts)}.`);
+    return;
+  }
+
+  const rec = {
+    id: "R-" + Date.now() + "-" + Math.random().toString(16).slice(2,8),
+    ts: Date.now(),
+    plate,
+    conf,
+    type: $("type").value,
+    status: "ADENTRO"
+  };
+  await idbPut(rec);
+
+  log(`✅ GUARDADO\nPlaca: ${plate}\nConf: ${Math.round(conf*100)}%\nFecha: ${fmt(rec.ts)}\nID: ${rec.id}`);
+  await refresh();
+
+  if(shouldPrint()) printTicket(rec);
+}
+
+async function scanAndSave(){
+  const data = await lprOnce();
+  if(!data) return;
+
+  if(!data.plate){
+    log("🔍 Sin placa detectada.");
+    return;
+  }
+
+  const now = Date.now();
+  if(data.plate===lastPlate && (now-lastPlateTs) < DUPLICATE_MS){
+    log(`↩️ ${data.plate} ignorada (duplicada).`);
+    return;
+  }
+  if(data.conf != null && data.conf < MIN_CONF){
+    log(`⚠️ ${data.plate} conf baja ${Math.round(data.conf*100)}%`);
+    return;
+  }
+
+  lastPlate = data.plate;
+  lastPlateTs = now;
+  await saveEntryAuto(data.plate, data.conf ?? 0);
+}
+
+function toggleAuto(){
+  if(timer){
+    clearInterval(timer); timer=null;
+    $("autoBtn").textContent="Auto: OFF";
+    log("Auto detenido.");
+    return;
+  }
+  const fps = Number($("fps").value||0);
+  if(!fps) return alert("Selecciona FPS.");
+  if(!stream) return alert("Inicia cámara primero.");
+  timer = setInterval(scanAndSave, Math.round(1000/fps));
+  $("autoBtn").textContent="Auto: ON";
+  log(`Auto iniciado a ${fps} fps.`);
+}
+
+async function refresh(){
+  const qPlate = normalizePlate($("qPlate").value);
+  const qStatus = $("qStatus").value;
+
+  let all = await idbAll();
+  all.sort((a,b)=>b.ts-a.ts);
+
+  if(qPlate) all = all.filter(r=>r.plate.includes(qPlate));
+  if(qStatus!=="ALL") all = all.filter(r=>r.status===qStatus);
+
+  const tb=$("tb");
+  tb.innerHTML="";
+  for(const r of all.slice(0,30)){
+    const tr=document.createElement("tr");
+    tr.innerHTML = `
+      <td>${fmt(r.ts)}</td>
+      <td>${r.plate}</td>
+      <td>${r.conf!=null?Math.round(r.conf*100)+"%":"—"}</td>
+      <td>${r.type}</td>
+      <td><span class="tag ${r.status==="ADENTRO"?"in":"out"}">${r.status}</span></td>
+      <td>${r.id}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
+
+$("start").onclick = startCam;
+$("stop").onclick = stopCam;
+$("scanOnce").onclick = scanAndSave;
+$("autoBtn").onclick = toggleAuto;
+$("refresh").onclick = refresh;
+$("clearAll").onclick = async ()=>{ if(confirm("¿Borrar todo?")){ await idbClear(); await refresh(); log("Borrado."); } };
+
+$("qPlate").addEventListener("input", refresh);
+$("qStatus").addEventListener("change", refresh);
+
+refresh();
+</script>
+</body>
+</html>
