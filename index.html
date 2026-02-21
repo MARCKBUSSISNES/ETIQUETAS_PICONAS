@@ -220,7 +220,7 @@
     <img src="assets/LOGO2.png" alt="LOGO2" onerror="this.style.display='none'">
     <div style="display:flex; flex-direction:column; line-height:1.1">
       <b>Menú</b>
-      <span class="muted" style="font-size:12px">---------</span>
+      <span class="muted" style="font-size:12px">Seleccione las Opciones.</span>
     </div>
   </div>
 
@@ -246,7 +246,7 @@
   </div>
 
   <div class="spacer"></div>
-  <div class="pill"><span class="muted">Tamaño:</span> <span id="pillSize" class="mono">50mm × 80mm</span></div>
+  <div class="pill"><span class="muted">Desarrollo por:</span> <span id="pillSize" class="mono">Juan Luis R.</span></div>
 </div>
 
 <div class="wrap noPrint">
@@ -409,7 +409,7 @@
 
         <div class="pill" style="display:block">
           <div class="muted" style="font-size:12px;margin-bottom:6px">WhatsApp</div>
-          Este modo es estable: copia texto + abre chat + descarga PNG.
+          Puede enviar su inventario por whatsapp, presionando Control + V
         </div>
       </div>
     </div>
@@ -687,7 +687,7 @@ function buildPrintDoc({product, qty, lot, prodDateHuman}){
     color:#000;
   }
   .logoWrap{display:flex;justify-content:center;align-items:center;margin-top:1mm;}
-  .logo{max-width:${Math.max(10, s.wMm-8)}mm; max-height:18mm; object-fit:contain;}
+  .logo{max-width:${Math.max(10, s.wMm-8)}mm; max-height:40mm; object-fit:contain;}
   .prod{font-size:${s.fontProd}px;font-weight:900;text-align:center;letter-spacing:.2px;margin-top:2mm;word-break:break-word;}
   .meta{font-size:11px;line-height:1.25;margin-top:2mm;}
   .foot{font-size:10px;text-align:center;margin-bottom:1mm;}
@@ -913,3 +913,4 @@ boot();
 </script>
 </body>
 </html>
+
